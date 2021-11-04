@@ -6,6 +6,7 @@
  */
 package xyz.user94729.mc.launcher.launch;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
@@ -55,6 +56,7 @@ public class LaunchHandler {
 
 		ProcessBuilder pb = new ProcessBuilder(args);
 		pb.inheritIO();
+		pb.directory(new File(profile.gameDir));
 		try{
 			return pb.start();
 		}catch(IOException e){
