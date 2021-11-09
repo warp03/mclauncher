@@ -99,7 +99,8 @@ public class GameInstance {
 		int lcount = 0;
 		for(JSONObject jlib : libraries){
 			String libName = jlib.getString("name");
-			progressCallback.accept((float) lcount / libraries.size() * 0.9f + .1f, "Loading library " + libName);
+			float progress = (float) lcount / libraries.size() * 0.9f + .1f;
+			progressCallback.accept(progress, "Loading library " + libName);
 
 			if(jlib.has("rules")){
 				JSONArray rules = jlib.getJSONArray("rules");
@@ -112,7 +113,7 @@ public class GameInstance {
 			libPath.append(libName0[0].replace(".", "/"));
 			libPath.append("/" + libName0[1] + "/" + libName0[2]);
 			libPath.append("/" + libName0[1] + "-" + libName0[2]);
-			if(jlib.keySet().contains("natives")){
+			if(jlib.has("natives")){
 				if(!jlib.getJSONObject("natives").keySet().contains(OS_NAME_SHORT))
 					continue;
 				libPath.append("-" + jlib.getJSONObject("natives").getString(OS_NAME_SHORT).replace("${arch}", Util.is64Bit() ? "64" : "32"));
@@ -120,8 +121,13 @@ public class GameInstance {
 			libPath.append(".jar");
 
 			Path libraryPath = Paths.get(libraryDir, libPath.toString());
-			if(!Files.exists(libraryPath))
-				throw new IOException("Library '" + libName + "' (" + libraryPath + ") does not exist, automatic downloads are currently not supported");
+			if(!Files.exists(libraryPath)){
+				JSONObject artifactDesc = jlib.getJSONObject("downloads").getJSONObject("artifact");
+				progressCallback.accept(progress, "Downloading library " + libName + " from '" + artifactDesc.getString("url") + "'");
+				byte[] data = Util.downloadAndVerifyArtifact(artifactDesc);
+				Files.createDirectories(libraryPath.getParent());
+				Files.write(libraryPath, data);
+			}
 
 			gi.libraries.add(libraryPath.toString());
 

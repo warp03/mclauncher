@@ -57,10 +57,12 @@ public final class MCLauncher {
 
 	private JFrame mainFrame;
 	private Map<State, JPanel> statePanels = new java.util.HashMap<>();
+
 	private JComboBox<GameProfile> selectGameProfile;
 	private JComboBox<AccountProfile> selectAccount;
 	private JLabel loadingLabel;
 	private JProgressBar loadingBar;
+	private GameProfileWizard gpManager;
 
 	public MCLauncher(Args args) {
 		this.dataFile = new File(args.getValueOrDefault("stateFile", "mclauncher_data.ser"));
@@ -73,7 +75,7 @@ public final class MCLauncher {
 	private void loadState() {
 		if(!this.dataFile.canRead())
 			return;
-		logger.debug("Loading data from ", this.dataFile);
+		logger.info("Loading data from ", this.dataFile);
 		try(ObjectInputStream ois = new ObjectInputStream(new java.io.FileInputStream(this.dataFile))){
 			this.profiles = (List<GameProfile>) ois.readObject();
 			this.accounts = (List<AccountProfile>) ois.readObject();
@@ -86,7 +88,7 @@ public final class MCLauncher {
 	}
 
 	private void saveState() {
-		logger.debug("Saving data to ", this.dataFile);
+		logger.info("Saving data to ", this.dataFile);
 		try(ObjectOutputStream oos = new ObjectOutputStream(new java.io.FileOutputStream(this.dataFile))){
 			oos.writeObject(this.profiles);
 			oos.writeObject(this.accounts);
@@ -132,6 +134,9 @@ public final class MCLauncher {
 
 		this.initLaunchPanel();
 
+		this.gpManager = new GameProfileWizard();
+		this.gpManager.initNewInstallPanel(this.newStatePanel(State.INSTALL));
+
 		logger.info("Initialization complete");
 		this.updateState(State.WAITING);
 	}
@@ -143,7 +148,7 @@ public final class MCLauncher {
 			throw new IllegalStateException("mainFrame must be visible when adding state panels");
 		JPanel jp = new JPanel();
 		jp.setLayout(null);
-		jp.setBounds(0, this.mainFrame.getContentPane().getHeight() - 200, this.mainFrame.getContentPane().getWidth(), 200);
+		jp.setBounds(0, 0, this.mainFrame.getContentPane().getWidth(), this.mainFrame.getContentPane().getHeight());
 		jp.setVisible(false);
 		this.mainFrame.add(jp);
 		this.statePanels.put(state, jp);
@@ -234,7 +239,29 @@ public final class MCLauncher {
 
 
 	private void addGameProfilePopup() {
-		this.editGameProfilePopup(null);
+		JComboBox<String> selectAction = new JComboBox<>(new String[] { "Install new version", "Manually import existing installation" });
+		Object[] message = { "Select action: ", selectAction };
+		if(JOptionPane.showConfirmDialog(null, message, "Add game profile", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION){
+			int action = selectAction.getSelectedIndex();
+			if(action == 0){
+				this.updateState(State.INSTALL);
+				Tasks.timeout((a) -> {
+					this.gpManager.showNewInstallUI((profile) -> {
+						if(profile != null){
+							this.profiles.add(profile);
+							logger.info("Added newly installed game profile from GameProfileWizard: name='" + profile.name + "' versionName='" + profile.versionName + "'");
+							this.prevSelectedGameProfile = profile;
+							this.updateComboBoxContents();
+						}
+						MCLauncher.this.updateState(State.WAITING);
+					});
+				}, 0);
+			}else if(action == 1){
+				this.editGameProfilePopup(null);
+			}else{
+				this.showError("Add game profile", "Invalid action: " + action);
+			}
+		}
 	}
 
 	private void editGameProfilePopup(GameProfile gp) {
@@ -378,6 +405,7 @@ public final class MCLauncher {
 			});
 			this.updateLoadingState(92, "Launching minecraft");
 			Process p = LaunchHandler.launchMinecraft(instance, profile, session);
+			logger.info("Minecraft process started");
 			this.updateLoadingState(100, "Done");
 			this.mainFrame.dispose();
 			int status = p.waitFor();
@@ -387,7 +415,7 @@ public final class MCLauncher {
 			this.updateState(State.WAITING);
 		}catch(IOException e){
 			logger.error("Error while launching minecraft: ", e);
-			this.showError("Login failed", "Error while launching minecraft: " + e.getMessage());
+			this.showError("Launch failed", "Error while launching minecraft: " + e.getMessage());
 			this.updateState(State.WAITING);
 		}catch(InterruptedException e){
 			logger.fatal("Interrupted unexpectedly while waiting for minecraft process to exit");
@@ -423,6 +451,7 @@ public final class MCLauncher {
 
 
 	private void showError(String title, String msg) {
+		logger.warn("Showing error: " + title + ": " + msg);
 		JOptionPane.showMessageDialog(null, msg, title, JOptionPane.ERROR_MESSAGE, null);
 	}
 

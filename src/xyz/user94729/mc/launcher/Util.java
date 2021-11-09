@@ -14,11 +14,19 @@ import java.net.URISyntaxException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 
 import javax.swing.JButton;
 import javax.swing.JLabel;
 
+import org.json.JSONObject;
+import org.omegazero.common.logging.Logger;
+
 public final class Util {
+
+	private static final Logger logger = Logger.create();
+
 
 	private Util() {
 	}
@@ -34,6 +42,7 @@ public final class Util {
 
 	public static HttpResponse<String> post(String url, String contentType, String accept, String payload) throws IOException {
 		try{
+			logger.debug("POST " + url + " (" + payload.length() + " chars)");
 			HttpRequest.Builder hb = HttpRequest.newBuilder(new URI(url));
 			hb.header("Content-Type", contentType);
 			if(accept != null)
@@ -43,6 +52,58 @@ public final class Util {
 		}catch(InterruptedException | URISyntaxException e){
 			throw new RuntimeException(e);
 		}
+	}
+
+	public static HttpResponse<byte[]> get(String url, String accept) throws IOException {
+		try{
+			logger.debug("GET " + url);
+			HttpRequest.Builder hb = HttpRequest.newBuilder(new URI(url));
+			if(accept != null)
+				hb.header("Accept", accept);
+			HttpRequest request = hb.GET().build();
+			return HttpClient.newBuilder().build().send(request, HttpResponse.BodyHandlers.ofByteArray());
+		}catch(InterruptedException | URISyntaxException e){
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static byte[] get200(String url) throws IOException {
+		return get200(url, null);
+	}
+
+	public static byte[] get200(String url, String accept) throws IOException {
+		HttpResponse<byte[]> res = get(url, accept);
+		if(res.statusCode() != 200)
+			throw new IOException("Non-200 status code: " + res.statusCode());
+		return res.body();
+	}
+
+
+	public static byte[] downloadAndVerifyArtifact(JSONObject desc) throws IOException {
+		String sha1 = desc.getString("sha1");
+		byte[] data = Util.get200(desc.getString("url"), null);
+		String calcHash = sha1Hex(data);
+		if(!calcHash.equals(sha1))
+			throw new IOException("Hash values do not match: expected " + sha1 + " calculated " + calcHash);
+		return data;
+	}
+
+
+	public static String sha1Hex(byte[] data) {
+		try{
+			MessageDigest md = MessageDigest.getInstance("SHA-1");
+			md.update(data);
+			return byteArrayToHex(md.digest());
+		}catch(NoSuchAlgorithmException e){
+			throw new RuntimeException(e);
+		}
+	}
+
+	public static String byteArrayToHex(byte[] data) {
+		final StringBuilder builder = new StringBuilder(data.length * 2);
+		for(byte b : data)
+			builder.append(String.format("%02x", b));
+		return builder.toString();
 	}
 
 

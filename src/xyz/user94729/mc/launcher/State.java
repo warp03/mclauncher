@@ -7,7 +7,7 @@
 package xyz.user94729.mc.launcher;
 
 public enum State {
-	NEW(0), INITIALIZING(1), WAITING(2), LAUNCHING(3), RUNNING(4), CLOSING(5);
+	NEW(0), INITIALIZING(1), WAITING(2), INSTALL(3), LAUNCHING(4), RUNNING(5), CLOSING(6);
 
 	private final int value;
 
