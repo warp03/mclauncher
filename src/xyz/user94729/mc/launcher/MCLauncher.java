@@ -44,6 +44,9 @@ public final class MCLauncher {
 	private static final int WINDOW_WIDTH = 800;
 	private static final int WINDOW_HEIGHT = 500;
 
+	private static final String SETTING_SELECTED_GAME_PROFILE = "prevSelectedGameProfile";
+	private static final String SETTING_SELECTED_ACCOUNT_PROFILE = "prevSelectedAccountProfile";
+
 
 	private State state = State.NEW;
 
@@ -52,8 +55,7 @@ public final class MCLauncher {
 
 	private List<GameProfile> profiles = new java.util.ArrayList<>();
 	private List<AccountProfile> accounts = new java.util.ArrayList<>();
-	private GameProfile prevSelectedGameProfile = null;
-	private AccountProfile prevSelectedAccount = null;
+	private SettingsManager settings = new SettingsManager();
 
 	private JFrame mainFrame;
 	private Map<State, JPanel> statePanels = new java.util.HashMap<>();
@@ -79,8 +81,7 @@ public final class MCLauncher {
 		try(ObjectInputStream ois = new ObjectInputStream(new java.io.FileInputStream(this.dataFile))){
 			this.profiles = (List<GameProfile>) ois.readObject();
 			this.accounts = (List<AccountProfile>) ois.readObject();
-			this.prevSelectedGameProfile = (GameProfile) ois.readObject();
-			this.prevSelectedAccount = (AccountProfile) ois.readObject();
+			this.settings = (SettingsManager) ois.readObject();
 		}catch(Exception e){
 			logger.error("Error while loading data from '", this.dataFile, "': ", e);
 			this.showError("IO error", "Error while loading data from " + this.dataFile);
@@ -92,8 +93,7 @@ public final class MCLauncher {
 		try(ObjectOutputStream oos = new ObjectOutputStream(new java.io.FileOutputStream(this.dataFile))){
 			oos.writeObject(this.profiles);
 			oos.writeObject(this.accounts);
-			oos.writeObject(this.prevSelectedGameProfile);
-			oos.writeObject(this.prevSelectedAccount);
+			oos.writeObject(this.settings);
 		}catch(Exception e){
 			logger.error("Error while saving data to '", this.dataFile, "': ", e);
 			this.showError("IO error", "Error while saving data to " + this.dataFile);
@@ -135,7 +135,7 @@ public final class MCLauncher {
 		this.initLaunchPanel();
 
 		this.gpManager = new GameProfileWizard();
-		this.gpManager.initNewInstallPanel(this.newStatePanel(State.INSTALL));
+		this.gpManager.initNewInstallPanel(this.newStatePanel(State.INSTALL), this.settings);
 
 		logger.info("Initialization complete");
 		this.updateState(State.WAITING);
@@ -174,8 +174,8 @@ public final class MCLauncher {
 					JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION){
 				MCLauncher.this.profiles.remove(profile);
 				logger.info("Deleted account '" + profile + "'");
-				if(MCLauncher.this.prevSelectedGameProfile == profile)
-					MCLauncher.this.prevSelectedGameProfile = null;
+				if(MCLauncher.this.settings.get(SETTING_SELECTED_GAME_PROFILE) == profile)
+					MCLauncher.this.settings.set(SETTING_SELECTED_GAME_PROFILE, null);
 				MCLauncher.this.updateComboBoxContents();
 			}
 		});
@@ -195,8 +195,8 @@ public final class MCLauncher {
 					JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION){
 				MCLauncher.this.accounts.remove(account);
 				logger.info("Deleted account '" + account + "'");
-				if(MCLauncher.this.prevSelectedAccount == account)
-					MCLauncher.this.prevSelectedAccount = null;
+				if(MCLauncher.this.settings.get(SETTING_SELECTED_ACCOUNT_PROFILE) == account)
+					MCLauncher.this.settings.set(SETTING_SELECTED_ACCOUNT_PROFILE, null);
 				MCLauncher.this.updateComboBoxContents();
 			}
 		});
@@ -213,8 +213,8 @@ public final class MCLauncher {
 			}
 			Tasks.timeout((a) -> {
 				try{
-					MCLauncher.this.prevSelectedGameProfile = profile;
-					MCLauncher.this.prevSelectedAccount = account;
+					MCLauncher.this.settings.set(SETTING_SELECTED_GAME_PROFILE, profile);
+					MCLauncher.this.settings.set(SETTING_SELECTED_ACCOUNT_PROFILE, account);
 					MCLauncher.this.saveState();
 					MCLauncher.this.launch(profile, account);
 				}catch(Exception e){
@@ -250,7 +250,7 @@ public final class MCLauncher {
 						if(profile != null){
 							this.profiles.add(profile);
 							logger.info("Added newly installed game profile from GameProfileWizard: name='" + profile.name + "' versionName='" + profile.versionName + "'");
-							this.prevSelectedGameProfile = profile;
+							MCLauncher.this.settings.set(SETTING_SELECTED_GAME_PROFILE, profile);
 							this.updateComboBoxContents();
 						}
 						MCLauncher.this.updateState(State.WAITING);
@@ -298,7 +298,7 @@ public final class MCLauncher {
 				logger.info("Added new game profile: name='" + gp.name + "' versionName='" + gp.versionName + "'");
 			}else
 				logger.info("Edited game profile '" + gp + "'");
-			this.prevSelectedGameProfile = gp;
+			this.settings.set(SETTING_SELECTED_GAME_PROFILE, gp);
 			this.updateComboBoxContents();
 		}
 	}
@@ -316,7 +316,7 @@ public final class MCLauncher {
 			AccountProfile np = new AccountProfile(accountName.getText(), selectAuthenticator.getSelectedItem().getClass().getName());
 			this.accounts.add(np);
 			logger.info("Added new account profile: name='" + np.getName() + "' authenticator='" + np.getAuthenticator() + "'");
-			this.prevSelectedAccount = np;
+			this.settings.set(SETTING_SELECTED_ACCOUNT_PROFILE, np);
 			this.updateComboBoxContents();
 			break;
 		}
@@ -330,7 +330,7 @@ public final class MCLauncher {
 		while(JOptionPane.showConfirmDialog(null, message, "Edit account", JOptionPane.OK_CANCEL_OPTION) == JOptionPane.OK_OPTION){
 			if(accountName.getText().length() > 0){
 				ap.setName(accountName.getText());
-				this.prevSelectedAccount = ap;
+				this.settings.set(SETTING_SELECTED_ACCOUNT_PROFILE, ap);
 				this.updateComboBoxContents();
 				break;
 			}
@@ -347,10 +347,10 @@ public final class MCLauncher {
 		});
 		this.selectGameProfile.setModel(new DefaultComboBoxModel<GameProfile>(this.profiles.toArray(new GameProfile[this.profiles.size()])));
 		this.selectAccount.setModel(new DefaultComboBoxModel<AccountProfile>(this.accounts.toArray(new AccountProfile[this.accounts.size()])));
-		if(this.prevSelectedGameProfile != null)
-			this.selectGameProfile.setSelectedItem(this.prevSelectedGameProfile);
-		if(this.prevSelectedAccount != null)
-			this.selectAccount.setSelectedItem(this.prevSelectedAccount);
+		if(this.settings.get(SETTING_SELECTED_GAME_PROFILE) != null)
+			this.selectGameProfile.setSelectedItem(this.settings.get(SETTING_SELECTED_GAME_PROFILE));
+		if(this.settings.get(SETTING_SELECTED_ACCOUNT_PROFILE) != null)
+			this.selectAccount.setSelectedItem(this.settings.get(SETTING_SELECTED_ACCOUNT_PROFILE));
 	}
 
 	private void updateLoadingState(int percentage, String msg) {
@@ -404,6 +404,7 @@ public final class MCLauncher {
 				MCLauncher.this.updateLoadingState((int) (10 + frac * 80), msg);
 			});
 			this.updateLoadingState(92, "Launching minecraft");
+
 			Process p = LaunchHandler.launchMinecraft(instance, profile, session);
 			logger.info("Minecraft process started");
 			this.updateLoadingState(100, "Done");

@@ -34,6 +34,9 @@ public class GameProfileWizard {
 
 	private static final Logger logger = Logger.create();
 
+	private static final String SETTING_INSTANCE_DIR = "GameProfileWizard.instanceDir";
+	private static final String SETTING_INSTALL_DIR = "GameProfileWizard.installDir";
+
 
 	private String latestVersion;
 	private String latestSnapshot;
@@ -50,7 +53,7 @@ public class GameProfileWizard {
 	private Consumer<GameProfile> onInstallComplete;
 
 
-	public void initNewInstallPanel(JPanel panel) {
+	public void initNewInstallPanel(JPanel panel, SettingsManager settings) {
 		if(this.newInstallPanel != null)
 			throw new IllegalStateException("Already has a newInstallPanel");
 		this.newInstallPanel = panel;
@@ -95,14 +98,23 @@ public class GameProfileWizard {
 		Util.addLabel(panel, "Profile Name", x1, panel.getHeight() - 265, 200);
 		Util.addLabel(panel, "Instance directory", x1, panel.getHeight() - 205, 200);
 		Util.addLabel(panel, "Install directory", x1, panel.getHeight() - 145, 200);
+
 		String defaultDir = System.getenv("APPDATA");
 		if(defaultDir == null)
 			defaultDir = System.getProperty("user.home");
 		defaultDir += "/.minecraft";
-		this.configInstanceDir.setText(defaultDir);
-		this.configInstallDir.setText(defaultDir);
+		String instanceDir = settings.getString(SETTING_INSTANCE_DIR);
+		if(instanceDir == null)
+			instanceDir = defaultDir;
+		String installDir = settings.getString(SETTING_INSTALL_DIR);
+		if(installDir == null)
+			installDir = defaultDir;
+		this.configInstanceDir.setText(instanceDir);
+		this.configInstallDir.setText(installDir);
 
 		Util.addButton(panel, "OK", panel.getWidth() - 200, panel.getHeight() - 50, 80, 30, false, () -> {
+			settings.set(SETTING_INSTANCE_DIR, GameProfileWizard.this.configInstanceDir.getText());
+			settings.set(SETTING_INSTALL_DIR, GameProfileWizard.this.configInstallDir.getText());
 			GameProfileWizard.this.completeInstall(true);
 		});
 		Util.addButton(panel, "Cancel", panel.getWidth() - 100, panel.getHeight() - 50, 80, 30, false, () -> {
