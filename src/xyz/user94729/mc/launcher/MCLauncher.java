@@ -173,7 +173,7 @@ public final class MCLauncher {
 			if(JOptionPane.showConfirmDialog(null, "Are you sure you would like to delete profile '" + profile + "'", "Delete game profile",
 					JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION){
 				MCLauncher.this.profiles.remove(profile);
-				logger.info("Deleted account '" + profile + "'");
+				logger.info("Deleted game profile '" + profile + "'");
 				if(MCLauncher.this.settings.get(SETTING_SELECTED_GAME_PROFILE) == profile)
 					MCLauncher.this.settings.set(SETTING_SELECTED_GAME_PROFILE, null);
 				MCLauncher.this.updateComboBoxContents();
