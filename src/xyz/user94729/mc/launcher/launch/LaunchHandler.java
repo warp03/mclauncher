@@ -8,7 +8,6 @@ package xyz.user94729.mc.launcher.launch;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,7 +19,7 @@ import xyz.user94729.mc.launcher.session.PlayerSession;
 public class LaunchHandler {
 
 
-	public static Process launchMinecraft(GameInstance instance, GameProfile profile, PlayerSession session) {
+	public static Process launchMinecraft(GameInstance instance, GameProfile profile, PlayerSession session) throws IOException {
 		Map<String, String> mcVars = new java.util.HashMap<>();
 		mcVars.put("auth_uuid", session.getPlayerUUID());
 		mcVars.put("auth_player_name", session.getPlayerName());
@@ -57,11 +56,7 @@ public class LaunchHandler {
 		ProcessBuilder pb = new ProcessBuilder(args);
 		pb.inheritIO();
 		pb.directory(new File(profile.gameDir));
-		try{
-			return pb.start();
-		}catch(IOException e){
-			throw new UncheckedIOException(e);
-		}
+		return pb.start();
 	}
 
 	public static String[] insertArgumentVars(String[] args, Map<String, String> vars) {
