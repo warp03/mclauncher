@@ -403,8 +403,15 @@ public final class MCLauncher {
 			GameInstance instance = GameInstance.loadFromJSON(profile.libraryDir, profile.libraryData.split("::"), (frac, msg) -> {
 				MCLauncher.this.updateLoadingState((int) (10 + frac * 80), msg);
 			});
-			this.updateLoadingState(92, "Launching minecraft");
 
+			if(profile.nativesDir == null || profile.nativesDir.length() < 1){
+				java.nio.file.Path destPath = java.nio.file.Paths.get(profile.gameJar).getParent().resolve(profile.versionName + "-natives");
+				this.updateLoadingState(91, "Extracting natives");
+				instance.extractNatives(destPath);
+				profile.nativesDir = destPath.toString();
+			}
+
+			this.updateLoadingState(96, "Launching minecraft");
 			Process p = LaunchHandler.launchMinecraft(instance, profile, session);
 			logger.info("Minecraft process started");
 			this.updateLoadingState(100, "Done");

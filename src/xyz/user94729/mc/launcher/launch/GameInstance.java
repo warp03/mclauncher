@@ -13,6 +13,8 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.BiConsumer;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.regex.Pattern;
 
 import org.json.JSONArray;
@@ -36,8 +38,16 @@ public class GameInstance {
 	private String assetsName;
 	private String releaseType;
 	private List<String> libraries = new java.util.ArrayList<>();
+	private List<String> nativeLibraries = new java.util.ArrayList<>();
 
 	protected GameInstance() {
+	}
+
+
+	public void extractNatives(Path dest) throws IOException {
+		for(String njar : this.nativeLibraries){
+			extractNativesJar(njar, dest);
+		}
 	}
 
 
@@ -63,6 +73,10 @@ public class GameInstance {
 
 	public List<String> getLibraries() {
 		return this.libraries;
+	}
+
+	public List<String> getNativeLibraries() {
+		return this.nativeLibraries;
 	}
 
 
@@ -108,12 +122,14 @@ public class GameInstance {
 					continue;
 			}
 
+			boolean nativelibs = jlib.has("natives");
+
 			StringBuilder libPath = new StringBuilder();
 			String[] libName0 = libName.split(":");
 			libPath.append(libName0[0].replace(".", "/"));
 			libPath.append("/" + libName0[1] + "/" + libName0[2]);
 			libPath.append("/" + libName0[1] + "-" + libName0[2]);
-			if(jlib.has("natives")){
+			if(nativelibs){
 				if(!jlib.getJSONObject("natives").keySet().contains(OS_NAME_SHORT))
 					continue;
 				libPath.append("-" + jlib.getJSONObject("natives").getString(OS_NAME_SHORT).replace("${arch}", Util.is64Bit() ? "64" : "32"));
@@ -130,6 +146,8 @@ public class GameInstance {
 			}
 
 			gi.libraries.add(libraryPath.toString());
+			if(nativelibs)
+				gi.nativeLibraries.add(libraryPath.toString());
 
 			lcount++;
 		}
@@ -180,6 +198,22 @@ public class GameInstance {
 			}
 		}
 		return true;
+	}
+
+
+	public static void extractNativesJar(String jarFile, Path dest) throws IOException {
+		try(JarFile jar = new JarFile(jarFile)){
+			java.util.Enumeration<JarEntry> enumEntries = jar.entries();
+			while(enumEntries.hasMoreElements()){
+				JarEntry file = enumEntries.nextElement();
+				Path destfile = dest.resolve(file.getName());
+				if(file.isDirectory()){
+					Files.createDirectories(destfile);
+				}else{
+					Files.copy(jar.getInputStream(file), destfile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+				}
+			}
+		}
 	}
 
 
