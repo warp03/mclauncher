@@ -212,6 +212,7 @@ public class GameProfileWizard {
 			JSONObject assetDesc = metaJson.getJSONObject("assetIndex");
 			String assetsDir = installDir + "/assets";
 			Path assetIndexDir = Paths.get(assetsDir, "indexes");
+			Files.createDirectories(assetIndexDir);
 			Path assetIndexFilePath = assetIndexDir.resolve(assetDesc.getString("id") + ".json");
 			if(!Files.exists(assetIndexFilePath) || !Util.sha1Hex(Files.readAllBytes(assetIndexFilePath)).equals(assetDesc.getString("sha1"))){
 				logger.info("Downloading assets JSON from '" + assetDesc.getString("url") + "'");
