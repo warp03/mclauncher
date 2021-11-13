@@ -145,9 +145,10 @@ public class GameInstance {
 				Files.write(libraryPath, data);
 			}
 
-			gi.libraries.add(libraryPath.toString());
 			if(nativelibs)
 				gi.nativeLibraries.add(libraryPath.toString());
+			else
+				gi.libraries.add(libraryPath.toString());
 
 			lcount++;
 		}
