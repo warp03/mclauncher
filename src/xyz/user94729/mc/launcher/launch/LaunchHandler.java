@@ -34,6 +34,9 @@ public class LaunchHandler {
 		mcVars.put("launcher_name", MCLauncher.BRAND);
 		mcVars.put("launcher_version", MCLauncher.VERSION);
 		mcVars.put("user_properties", "{}");
+		// no idea what these are, it works without them
+		mcVars.put("clientid", "");
+		mcVars.put("auth_xuid", "");
 
 		String cpsep = System.getProperty("path.separator");
 		mcVars.put("classpath", String.join(cpsep, instance.getLibraries()) + cpsep + profile.gameJar);
