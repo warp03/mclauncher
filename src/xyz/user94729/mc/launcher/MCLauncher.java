@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 import javax.swing.DefaultComboBoxModel;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -62,6 +63,7 @@ public final class MCLauncher {
 
 	private JComboBox<GameProfile> selectGameProfile;
 	private JComboBox<AccountProfile> selectAccount;
+	private JCheckBox keepLauncherOpen;
 	private JLabel loadingLabel;
 	private JProgressBar loadingBar;
 	private GameProfileWizard gpManager;
@@ -204,6 +206,10 @@ public final class MCLauncher {
 		Util.addButton(jp, "+", jp.getWidth() / 2 + 305, jp.getHeight() - 120, 25, 25, true, this::addAccountPopup);
 
 		this.updateComboBoxContents();
+
+		this.keepLauncherOpen = new JCheckBox("Keep launcher open");
+		this.keepLauncherOpen.setBounds(40, jp.getHeight() - 70, 150, 25);
+		jp.add(this.keepLauncherOpen);
 
 		Util.addButton(jp, "Launch", jp.getWidth() / 2 - 150, jp.getHeight() - 70, 300, 50, false, () -> {
 			GameProfile profile = (GameProfile) MCLauncher.this.selectGameProfile.getSelectedItem();
@@ -420,11 +426,15 @@ public final class MCLauncher {
 			Process p = LaunchHandler.launchMinecraft(instance, profile, session);
 			logger.info("Minecraft process started");
 			this.updateLoadingState(100, "Done");
-			this.mainFrame.dispose();
-			int status = p.waitFor();
-			if(status != 0)
-				this.showError("Minecraft exited abnormally", "Minecraft exited with status " + status);
-			this.mainFrame.setVisible(true);
+			if(!this.keepLauncherOpen.isSelected()){
+				this.mainFrame.dispose();
+				int status = p.waitFor();
+				if(status != 0)
+					this.showError("Minecraft exited abnormally", "Minecraft exited with status " + status);
+				this.mainFrame.setVisible(true);
+			}else
+				JOptionPane.showMessageDialog(this.mainFrame, "Minecraft is starting, you may now continue using the launcher", "Minecraft started",
+						JOptionPane.INFORMATION_MESSAGE);
 			this.updateState(State.WAITING);
 		}catch(IOException e){
 			logger.error("Error while launching minecraft: ", e);
