@@ -70,6 +70,7 @@ public final class MCLauncher {
 		this.dataFile = new File(args.getValueOrDefault("stateFile", "mclauncher_data.ser"));
 		this.loginManagers.add(new xyz.user94729.mc.launcher.login.YggdrasilAuthenticator());
 		this.loginManagers.add(new xyz.user94729.mc.launcher.login.MSAuthenticator());
+		this.loginManagers.add(new xyz.user94729.mc.launcher.login.OfflineAuthenticator());
 	}
 
 
