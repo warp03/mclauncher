@@ -376,10 +376,14 @@ public final class MCLauncher {
 		loginPanel.setLayout(null);
 		loginPanel.setBounds(0, 0, this.mainFrame.getContentPane().getWidth(), this.mainFrame.getContentPane().getHeight() - 200);
 		this.mainFrame.add(loginPanel);
+		this.mainFrame.revalidate();
 		try{
 			session = authenticator.doLogin(account.getSession(), loginPanel);
-			if(session == null)
-				throw new NullPointerException("session is null");
+			if(session == null){
+				logger.info("Login canceled");
+				this.updateState(State.WAITING);
+				return;
+			}
 			if(session.getAccessToken() == null)
 				throw new NullPointerException("session accessToken is null");
 		}catch(IOException e){

@@ -32,6 +32,8 @@ public class YggdrasilAuthenticator implements LoginManager {
 			logger.info("Creating new session");
 			String clientToken = org.omegazero.common.util.Util.randomHex(32);
 			JSONObject json = loginPrompt(clientToken, ui);
+			if(json == null)
+				return null;
 			JSONObject profile = json.getJSONObject("selectedProfile");
 			psession = new YggdrasilPlayerSession(profile.getString("id"), profile.getString("name"), json.getString("accessToken"), clientToken);
 		}
@@ -39,7 +41,10 @@ public class YggdrasilAuthenticator implements LoginManager {
 		if(!this.checkTokenValid(session)){
 			if(!this.refreshToken(session)){
 				logger.info("Asking user to login again");
-				this.refreshSession(session, this.loginPrompt(session.getClientToken(), ui));
+				JSONObject json = this.loginPrompt(session.getClientToken(), ui);
+				if(json == null)
+					return null;
+				this.refreshSession(session, json);
 			}
 		}
 		return session;
@@ -78,11 +83,10 @@ public class YggdrasilAuthenticator implements LoginManager {
 		}
 		ui.removeAll();
 		ui.repaint();
-		if(username.isEnabled()){
+		if(username.isEnabled())
 			return login(username.getText(), password.getText(), clientToken);
-		}else{
-			throw new IOException("Login aborted");
-		}
+		else
+			return null;
 	}
 
 	private boolean checkTokenValid(YggdrasilPlayerSession session) throws IOException {

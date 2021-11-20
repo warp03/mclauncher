@@ -57,8 +57,10 @@ public class MSAuthenticator implements LoginManager {
 		MSPlayerSession session = (MSPlayerSession) psession;
 		while(true){
 			try{
-				authChain(session);
-				break;
+				if(authChain(session))
+					return session;
+				else
+					return null;
 			}catch(AuthenticationException e){
 				logger.warn("Some token seems to be invalid, resetting everything: ", e);
 				session.msAccessToken = null;
@@ -68,7 +70,6 @@ public class MSAuthenticator implements LoginManager {
 				session.setAccessToken(null);
 			}
 		}
-		return session;
 	}
 
 
@@ -141,13 +142,14 @@ public class MSAuthenticator implements LoginManager {
 	 * @param session The session
 	 * @throws IOException             If an IO error occurs
 	 * @throws AuthenticationException If any authentication fails
+	 * @return <code>false</code> if the login was aborted by the user, <code>true</code> otherwise
 	 */
-	public static void authChain(MSPlayerSession session) throws IOException {
+	public static boolean authChain(MSPlayerSession session) throws IOException {
 		if(session.msAccessToken == null){
 			logger.info("Obtaining MS auth token");
 			String authCode = loginPrompt();
 			if(authCode == null)
-				throw new IOException("Login aborted");
+				return false;
 			session.msAccessToken = getMSAuthToken(authCode);
 		}
 		if(session.xblToken == null){
@@ -168,6 +170,7 @@ public class MSAuthenticator implements LoginManager {
 		JSONObject mcProfile = getMCProfile(session.getAccessToken());
 		session.setPlayerUUID(mcProfile.getString("id"));
 		session.setPlayerName(mcProfile.getString("name"));
+		return true;
 	}
 
 
