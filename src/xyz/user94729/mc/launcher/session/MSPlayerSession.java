@@ -12,6 +12,7 @@ public class MSPlayerSession extends PlayerSession {
 
 
 	public String msAccessToken;
+	public String msRefreshToken;
 	public String xblToken;
 	public String xblUserHash;
 	public String xstsToken;

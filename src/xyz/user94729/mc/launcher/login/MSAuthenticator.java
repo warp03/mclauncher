@@ -109,7 +109,7 @@ public class MSAuthenticator implements LoginManager {
 			webView.getEngine().getHistory().getEntries().addListener((ListChangeListener<WebHistory.Entry>) (c) -> {
 				if(c.next() && c.wasAdded()){
 					for(WebHistory.Entry entry : c.getAddedSubList()){
-						if(entry.getUrl().startsWith(REDIRECT_URL)){
+						if(entry.getUrl().startsWith(REDIRECT_URL + "?code=")){
 							authCodeRef.set(entry.getUrl().substring(entry.getUrl().indexOf("=") + 1, entry.getUrl().indexOf("&")));
 							jf.dispose();
 							webView.getEngine().load(null);
@@ -146,11 +146,26 @@ public class MSAuthenticator implements LoginManager {
 	 */
 	public static boolean authChain(MSPlayerSession session) throws IOException {
 		if(session.msAccessToken == null){
-			logger.info("Obtaining MS auth token");
-			String authCode = loginPrompt();
-			if(authCode == null)
-				return false;
-			session.msAccessToken = getMSAuthToken(authCode);
+			String[] tokens = null;
+			while(tokens == null){
+				if(session.msRefreshToken != null){
+					logger.info("Attempting token refresh with existing refresh token");
+					try{
+						tokens = refreshMSAuthToken(session.msRefreshToken);
+					}catch(AuthenticationException e){
+						logger.info("Token refresh failed, discarding token: ", e);
+						session.msRefreshToken = null;
+					}
+				}else{
+					logger.info("Prompting user to sign in for MS auth token");
+					String authCode = loginPrompt();
+					if(authCode == null)
+						return false;
+					tokens = getMSAuthToken(authCode);
+				}
+			}
+			session.msAccessToken = tokens[0];
+			session.msRefreshToken = tokens[1];
 		}
 		if(session.xblToken == null){
 			logger.info("Obtaining XBL token");
@@ -175,21 +190,50 @@ public class MSAuthenticator implements LoginManager {
 
 
 	/**
-	 * Gets the Microsoft authentication token using a Microsoft authentication code returned by a login prompt (<code>https://login.live.com/oauth20_token.srf</code>). The
-	 * application client ID is the Minecraft ID (<code>00000000402b5328</code>).
+	 * Gets the Microsoft authentication and refresh token using a Microsoft authentication code returned by a login prompt
+	 * (<code>https://login.live.com/oauth20_token.srf</code>). The application client ID is the Minecraft ID (<code>00000000402b5328</code>).
 	 * 
 	 * @param msAuthCode The Microsoft authentication code
-	 * @return The Microsoft authentication token
-	 * @throws IOException If an IO error occurs, possibly due to an invalid token
+	 * @return The Microsoft authentication and refresh token as the first and second element, respectively
+	 * @throws IOException             If an IO error occurs
+	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
+	 * @see #getMSAuthTokens(String)
 	 */
-	public static String getMSAuthToken(String msAuthCode) throws IOException {
-		HttpResponse<String> res = Util.post("https://login.live.com/oauth20_token.srf", "application/x-www-form-urlencoded", "client_id=00000000402b5328&code="
-				+ URLEncoder.encode(msAuthCode, StandardCharsets.UTF_8) + "&grant_type=authorization_code&redirect_uri=" + REDIRECT_URL_ENCODED);
-		if(res.statusCode() == 200){
-			JSONObject json = new JSONObject(res.body());
-			return json.getString("access_token");
-		}else
-			throw new IOException("Non-200 status code: " + res.statusCode());
+	public static String[] getMSAuthToken(String msAuthCode) throws IOException {
+		return getMSAuthTokens("client_id=00000000402b5328&code=" + URLEncoder.encode(msAuthCode, StandardCharsets.UTF_8) + "&grant_type=authorization_code&redirect_uri="
+				+ REDIRECT_URL_ENCODED);
+	}
+
+	/**
+	 * Refreshes a Microsoft authentication token using a refresh token returned while creating the token using {@link #getMSAuthToken(String)}
+	 * (<code>https://login.live.com/oauth20_token.srf</code>). The application client ID is the Minecraft ID (<code>00000000402b5328</code>).
+	 * 
+	 * @param refreshToken The refresh token
+	 * @return The refreshed Microsoft authentication and refresh token as the first and second element, respectively
+	 * @throws IOException             If an IO error occurs
+	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
+	 * @see #getMSAuthTokens(String)
+	 */
+	public static String[] refreshMSAuthToken(String refreshToken) throws IOException {
+		return getMSAuthTokens("client_id=00000000402b5328&refresh_token=" + URLEncoder.encode(refreshToken, StandardCharsets.UTF_8)
+				+ "&grant_type=refresh_token&redirect_uri=" + REDIRECT_URL_ENCODED);
+	}
+
+	/**
+	 * Makes a POST request to <code>https://login.live.com/oauth20_token.srf</code> with the given <code>application/x-www-form-urlencoded</code> <b>body</b> and extracts the
+	 * <code>access_token</code> and <code>refresh_token</code> as the first and second element of the returned array, respectively.
+	 * 
+	 * @param body The body
+	 * @return The access and refresh token
+	 * @throws IOException             If an IO error occurs
+	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
+	 * @see #getMSAuthToken(String)
+	 * @see #refreshMSAuthToken(String)
+	 */
+	public static String[] getMSAuthTokens(String body) throws IOException {
+		HttpResponse<String> res = Util.post("https://login.live.com/oauth20_token.srf", "application/x-www-form-urlencoded", body);
+		JSONObject json = getMSAuthJSON(res);
+		return new String[] { json.getString("access_token"), json.getString("refresh_token") };
 	}
 
 	/**
@@ -198,19 +242,17 @@ public class MSAuthenticator implements LoginManager {
 	 * 
 	 * @param msAuthToken The Microsoft authentication token
 	 * @return An array where the first element is the XBL token and the second element is the user hash
-	 * @throws IOException If an IO error occurs, possibly due to an invalid token
+	 * @throws IOException             If an IO error occurs
+	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 */
 	public static String[] getXblAuth(String msAuthToken) throws IOException {
 		HttpResponse<String> res = Util.postJson("https://user.auth.xboxlive.com/user/authenticate",
 				"{\"Properties\": {\"AuthMethod\": \"RPS\",\"SiteName\": \"user.auth.xboxlive.com\",\"RpsTicket\": \"d=" + msAuthToken
 						+ "\"},\"RelyingParty\": \"http://auth.xboxlive.com\",\"TokenType\": \"JWT\"}");
-		if(res.statusCode() == 200){
-			JSONObject json = new JSONObject(res.body());
-			String xblToken = json.getString("Token");
-			String uhs = ((JSONObject) json.getJSONObject("DisplayClaims").getJSONArray("xui").get(0)).getString("uhs");
-			return new String[] { xblToken, uhs };
-		}else
-			throw new IOException("Non-200 status code: " + res.statusCode());
+		JSONObject json = getMSAuthJSON(res);
+		String xblToken = json.getString("Token");
+		String uhs = ((JSONObject) json.getJSONObject("DisplayClaims").getJSONArray("xui").get(0)).getString("uhs");
+		return new String[] { xblToken, uhs };
 	}
 
 	/**
@@ -218,16 +260,14 @@ public class MSAuthenticator implements LoginManager {
 	 * 
 	 * @param xblToken The XBL token
 	 * @return The XSTS token
-	 * @throws IOException If an IO error occurs, possibly due to an invalid token
+	 * @throws IOException             If an IO error occurs
+	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 */
 	public static String getXstsToken(String xblToken) throws IOException {
 		HttpResponse<String> res = Util.postJson("https://xsts.auth.xboxlive.com/xsts/authorize", "{\"Properties\": {\"SandboxId\": \"RETAIL\",\"UserTokens\": [\"" + xblToken
 				+ "\"]},\"RelyingParty\": \"rp://api.minecraftservices.com/\",\"TokenType\": \"JWT\"}");
-		if(res.statusCode() == 200){
-			JSONObject json = new JSONObject(res.body());
-			return json.getString("Token");
-		}else
-			throw new IOException("Non-200 status code: " + res.statusCode());
+		JSONObject json = getMSAuthJSON(res);
+		return json.getString("Token");
 	}
 
 	/**
@@ -236,16 +276,14 @@ public class MSAuthenticator implements LoginManager {
 	 * @param xstsToken   The XSTS token, for example returned by {@link #getXstsToken(String)}
 	 * @param xblUserHash The XBL user hash, for example returned by {@link #getXblAuth(String)}
 	 * @return The Minecraft access token
-	 * @throws IOException If an IO error occurs, possibly due to an invalid token
+	 * @throws IOException             If an IO error occurs
+	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 */
 	public static String getMCAccessToken(String xstsToken, String xblUserHash) throws IOException {
 		HttpResponse<String> res = Util.postJson("https://api.minecraftservices.com/authentication/login_with_xbox",
 				"{\"identityToken\": \"XBL3.0 x=" + xblUserHash + ";" + xstsToken + "\"}");
-		if(res.statusCode() == 200){
-			JSONObject json = new JSONObject(res.body());
-			return json.getString("access_token");
-		}else
-			throw new IOException("Non-200 status code: " + res.statusCode());
+		JSONObject json = getMSAuthJSON(res);
+		return json.getString("access_token");
 	}
 
 	/**
@@ -267,6 +305,25 @@ public class MSAuthenticator implements LoginManager {
 		}catch(InterruptedException | URISyntaxException e){
 			throw new RuntimeException(e);
 		}
+	}
+
+
+	private static JSONObject getMSAuthJSON(HttpResponse<String> res) throws IOException {
+		int status = res.statusCode();
+		if(status == 200)
+			return new JSONObject(res.body());
+		else if(status == 400 || status == 401){
+			try{
+				JSONObject errjson = new JSONObject(res.body());
+				throw new AuthenticationException(
+						"MS Authentication failed (HTTP status " + status + "): " + errjson.getString("error") + ": " + errjson.getString("error_description"));
+			}catch(org.json.JSONException e){
+				IOException ne = new AuthenticationException("MS Authentication failed (HTTP status " + status + ")");
+				ne.addSuppressed(e);
+				throw ne;
+			}
+		}else
+			throw new IOException("Non-200 status code: " + status);
 	}
 
 
