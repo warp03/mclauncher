@@ -11,6 +11,7 @@ import java.awt.Dimension;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -19,6 +20,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.JDialog;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JProgressBar;
 
@@ -94,6 +96,7 @@ public class MSAuthenticator implements LoginManager {
 		loadBar.setValue(1);
 
 		AtomicReference<String> authCodeRef = new AtomicReference<>();
+		AtomicReference<String> errRef = new AtomicReference<>();
 
 		Platform.setImplicitExit(false);
 		Platform.runLater(() -> {
@@ -109,10 +112,27 @@ public class MSAuthenticator implements LoginManager {
 			webView.getEngine().getHistory().getEntries().addListener((ListChangeListener<WebHistory.Entry>) (c) -> {
 				if(c.next() && c.wasAdded()){
 					for(WebHistory.Entry entry : c.getAddedSubList()){
-						if(entry.getUrl().startsWith(REDIRECT_URL + "?code=")){
-							authCodeRef.set(entry.getUrl().substring(entry.getUrl().indexOf("=") + 1, entry.getUrl().indexOf("&")));
+						String url = entry.getUrl();
+						if(url.startsWith(REDIRECT_URL)){
+							int qstart = url.indexOf('?');
+							if(qstart < 0)
+								continue;
+							java.util.Map<String, String> query = new java.util.HashMap<>();
+							String[] parts = url.substring(qstart + 1).split("&");
+							for(String p : parts){
+								int vs = p.indexOf('=');
+								if(vs < 0)
+									continue;
+								query.put(p.substring(0, vs), URLDecoder.decode(p.substring(vs + 1), java.nio.charset.StandardCharsets.UTF_8));
+							}
+							if(query.containsKey("code")){
+								authCodeRef.set(query.get("code"));
+							}else{
+								errRef.set("OAuth2 authorization failed: " + query.get("error") + ": " + query.get("error_description"));
+							}
 							jf.dispose();
 							webView.getEngine().load(null);
+							break;
 						}
 					}
 				}
@@ -132,7 +152,14 @@ public class MSAuthenticator implements LoginManager {
 
 		jf.setVisible(true);
 		jf.dispose();
-		return authCodeRef.get();
+
+		String err = errRef.get();
+		if(err != null){
+			logger.warn(err);
+			JOptionPane.showMessageDialog(null, err, "Error while logging in", JOptionPane.ERROR_MESSAGE);
+			return null;
+		}else
+			return authCodeRef.get();
 	}
 
 	/**
