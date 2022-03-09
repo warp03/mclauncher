@@ -57,14 +57,18 @@ public class MSAuthenticator implements LoginManager {
 			psession = new MSPlayerSession();
 		}
 		MSPlayerSession session = (MSPlayerSession) psession;
+		long time = System.currentTimeMillis();
 		while(true){
 			try{
-				if(authChain(session))
+				if(time - session.lastRefresh > MSPlayerSession.refreshTimeout){
+					session.lastRefresh = time;
+					throw new AuthenticationException("Token refresh");
+				}else if(authChain(session))
 					return session;
 				else
 					return null;
 			}catch(AuthenticationException e){
-				logger.warn("Some token seems to be invalid, resetting everything: ", e);
+				logger.warn("Reauthenticating: ", e);
 				session.msAccessToken = null;
 				session.xblToken = null;
 				session.xblUserHash = null;
@@ -167,7 +171,7 @@ public class MSAuthenticator implements LoginManager {
 	 * already be stored in the session.
 	 * 
 	 * @param session The session
-	 * @throws IOException             If an IO error occurs
+	 * @throws IOException If an IO error occurs
 	 * @throws AuthenticationException If any authentication fails
 	 * @return <code>false</code> if the login was aborted by the user, <code>true</code> otherwise
 	 */
@@ -222,7 +226,7 @@ public class MSAuthenticator implements LoginManager {
 	 * 
 	 * @param msAuthCode The Microsoft authentication code
 	 * @return The Microsoft authentication and refresh token as the first and second element, respectively
-	 * @throws IOException             If an IO error occurs
+	 * @throws IOException If an IO error occurs
 	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 * @see #getMSAuthTokens(String)
 	 */
@@ -237,7 +241,7 @@ public class MSAuthenticator implements LoginManager {
 	 * 
 	 * @param refreshToken The refresh token
 	 * @return The refreshed Microsoft authentication and refresh token as the first and second element, respectively
-	 * @throws IOException             If an IO error occurs
+	 * @throws IOException If an IO error occurs
 	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 * @see #getMSAuthTokens(String)
 	 */
@@ -252,7 +256,7 @@ public class MSAuthenticator implements LoginManager {
 	 * 
 	 * @param body The body
 	 * @return The access and refresh token
-	 * @throws IOException             If an IO error occurs
+	 * @throws IOException If an IO error occurs
 	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 * @see #getMSAuthToken(String)
 	 * @see #refreshMSAuthToken(String)
@@ -269,7 +273,7 @@ public class MSAuthenticator implements LoginManager {
 	 * 
 	 * @param msAuthToken The Microsoft authentication token
 	 * @return An array where the first element is the XBL token and the second element is the user hash
-	 * @throws IOException             If an IO error occurs
+	 * @throws IOException If an IO error occurs
 	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 */
 	public static String[] getXblAuth(String msAuthToken) throws IOException {
@@ -287,7 +291,7 @@ public class MSAuthenticator implements LoginManager {
 	 * 
 	 * @param xblToken The XBL token
 	 * @return The XSTS token
-	 * @throws IOException             If an IO error occurs
+	 * @throws IOException If an IO error occurs
 	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 */
 	public static String getXstsToken(String xblToken) throws IOException {
@@ -300,10 +304,10 @@ public class MSAuthenticator implements LoginManager {
 	/**
 	 * Gets the Minecraft access token using a XSTS token and XBL user hash (<code>https://api.minecraftservices.com/authentication/login_with_xbox</code>).
 	 * 
-	 * @param xstsToken   The XSTS token, for example returned by {@link #getXstsToken(String)}
+	 * @param xstsToken The XSTS token, for example returned by {@link #getXstsToken(String)}
 	 * @param xblUserHash The XBL user hash, for example returned by {@link #getXblAuth(String)}
 	 * @return The Minecraft access token
-	 * @throws IOException             If an IO error occurs
+	 * @throws IOException If an IO error occurs
 	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 */
 	public static String getMCAccessToken(String xstsToken, String xblUserHash) throws IOException {
@@ -318,7 +322,7 @@ public class MSAuthenticator implements LoginManager {
 	 * 
 	 * @param accessToken The Minecraft access token
 	 * @return The JSON object returned by the API
-	 * @throws IOException             If an IO error occurs
+	 * @throws IOException If an IO error occurs
 	 * @throws AuthenticationException If authentication fails, likely due to an invalid token
 	 */
 	public static JSONObject getMCProfile(String accessToken) throws IOException {
