@@ -264,7 +264,7 @@ public class GameProfileWizard {
 				Path destPath = assetsDir.resolve("objects/" + opath);
 				if(!Files.exists(destPath)){
 					this.setNewInstallUIProgress(-1, "Downloading" + progstr);
-					byte[] data = Util.get200("http://resources.download.minecraft.net/" + opath);
+					byte[] data = Util.get200("https://resources.download.minecraft.net/" + opath);
 					Files.createDirectories(destPath.getParent());
 					Files.write(destPath, data);
 					objectDL++;
