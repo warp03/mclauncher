@@ -114,13 +114,14 @@ public class GameInstance {
 		for(JSONObject jlib : libraries){
 			String libName = jlib.getString("name");
 			float progress = (float) lcount / libraries.size() * 0.9f + .1f;
-			progressCallback.accept(progress, "Loading library " + libName);
 
 			if(jlib.has("rules")){
 				JSONArray rules = jlib.getJSONArray("rules");
 				if(!checkRules(rules))
 					continue;
 			}
+
+			progressCallback.accept(progress, "Loading library " + libName);
 
 			boolean nativelibs = jlib.has("natives");
 
@@ -133,6 +134,9 @@ public class GameInstance {
 				if(!jlib.getJSONObject("natives").keySet().contains(OS_NAME_SHORT))
 					continue;
 				libPath.append("-" + jlib.getJSONObject("natives").getString(OS_NAME_SHORT).replace("${arch}", Util.is64Bit() ? "64" : "32"));
+			}else if(libName0.length > 3 && libName0[3].startsWith("natives-")){
+				nativelibs = true;
+				libPath.append("-" + libName0[3]);
 			}
 			libPath.append(".jar");
 
