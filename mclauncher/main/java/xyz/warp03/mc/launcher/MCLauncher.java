@@ -1,10 +1,10 @@
 /*
- * Copyright (C) 2021 user94729
+ * Copyright (C) 2021-2023 warp03
  *
  * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
  * If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-package xyz.user94729.mc.launcher;
+package xyz.warp03.mc.launcher;
 
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
@@ -30,10 +30,10 @@ import org.omegazero.common.logging.Logger;
 import org.omegazero.common.logging.LoggerUtil;
 import org.omegazero.common.util.Args;
 
-import xyz.user94729.mc.launcher.launch.GameInstance;
-import xyz.user94729.mc.launcher.launch.LaunchHandler;
-import xyz.user94729.mc.launcher.login.LoginManager;
-import xyz.user94729.mc.launcher.session.PlayerSession;
+import xyz.warp03.mc.launcher.launch.GameInstance;
+import xyz.warp03.mc.launcher.launch.LaunchHandler;
+import xyz.warp03.mc.launcher.login.LoginManager;
+import xyz.warp03.mc.launcher.session.PlayerSession;
 
 public final class MCLauncher {
 
@@ -70,9 +70,9 @@ public final class MCLauncher {
 
 	public MCLauncher(Args args) {
 		this.dataFile = new File(args.getValueOrDefault("stateFile", "mclauncher_data.ser"));
-		this.loginManagers.add(new xyz.user94729.mc.launcher.login.YggdrasilAuthenticator());
-		this.loginManagers.add(new xyz.user94729.mc.launcher.login.MSAuthenticator());
-		this.loginManagers.add(new xyz.user94729.mc.launcher.login.OfflineAuthenticator());
+		this.loginManagers.add(new xyz.warp03.mc.launcher.login.YggdrasilAuthenticator());
+		this.loginManagers.add(new xyz.warp03.mc.launcher.login.MSAuthenticator());
+		this.loginManagers.add(new xyz.warp03.mc.launcher.login.OfflineAuthenticator());
 	}
 
 

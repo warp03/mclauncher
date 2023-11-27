@@ -1,10 +1,10 @@
 /*
- * Copyright (C) 2021 user94729
+ * Copyright (C) 2021-2023 warp03
  *
  * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
  * If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-package xyz.user94729.mc.launcher.login;
+package xyz.warp03.mc.launcher.login;
 
 import java.awt.Color;
 import java.awt.Dimension;
@@ -35,10 +35,11 @@ import javafx.embed.swing.JFXPanel;
 import javafx.scene.Scene;
 import javafx.scene.web.WebHistory;
 import javafx.scene.web.WebView;
-import xyz.user94729.mc.launcher.AuthenticationException;
-import xyz.user94729.mc.launcher.Util;
-import xyz.user94729.mc.launcher.session.MSPlayerSession;
-import xyz.user94729.mc.launcher.session.PlayerSession;
+
+import xyz.warp03.mc.launcher.AuthenticationException;
+import xyz.warp03.mc.launcher.Util;
+import xyz.warp03.mc.launcher.session.MSPlayerSession;
+import xyz.warp03.mc.launcher.session.PlayerSession;
 
 public class MSAuthenticator implements LoginManager {
 

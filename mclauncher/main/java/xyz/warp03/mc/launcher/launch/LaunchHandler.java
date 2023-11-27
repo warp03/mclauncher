@@ -1,10 +1,10 @@
 /*
- * Copyright (C) 2021 user94729
+ * Copyright (C) 2021-2023 warp03
  *
  * This Source Code Form is subject to the terms of the Mozilla Public License, v. 2.0.
  * If a copy of the MPL was not distributed with this file, You can obtain one at https://mozilla.org/MPL/2.0/.
  */
-package xyz.user94729.mc.launcher.launch;
+package xyz.warp03.mc.launcher.launch;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,9 +12,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import xyz.user94729.mc.launcher.GameProfile;
-import xyz.user94729.mc.launcher.MCLauncher;
-import xyz.user94729.mc.launcher.session.PlayerSession;
+import xyz.warp03.mc.launcher.GameProfile;
+import xyz.warp03.mc.launcher.MCLauncher;
+import xyz.warp03.mc.launcher.session.PlayerSession;
 
 public class LaunchHandler {
 
