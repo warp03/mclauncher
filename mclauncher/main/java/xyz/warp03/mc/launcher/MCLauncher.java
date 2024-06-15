@@ -70,8 +70,8 @@ public final class MCLauncher {
 
 	public MCLauncher(Args args) {
 		this.dataFile = new File(args.getValueOrDefault("stateFile", "mclauncher_data.ser"));
-		this.loginManagers.add(new xyz.warp03.mc.launcher.login.YggdrasilAuthenticator());
 		this.loginManagers.add(new xyz.warp03.mc.launcher.login.MSAuthenticator());
+		this.loginManagers.add(new xyz.warp03.mc.launcher.login.YggdrasilAuthenticator());
 		this.loginManagers.add(new xyz.warp03.mc.launcher.login.OfflineAuthenticator());
 	}
 
