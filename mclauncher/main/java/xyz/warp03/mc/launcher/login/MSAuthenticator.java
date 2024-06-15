@@ -9,6 +9,8 @@ package xyz.warp03.mc.launcher.login;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.io.IOException;
+import java.net.CookieHandler;
+import java.net.CookieManager;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
@@ -107,6 +109,8 @@ public class MSAuthenticator implements LoginManager {
 		Platform.runLater(() -> {
 			loadBar.setValue(3);
 			WebView webView = new WebView();
+			CookieManager manager = new CookieManager();
+			CookieHandler.setDefault(manager);
 			loadBar.setValue(12);
 			webView.getEngine().load(LOGIN_URL);
 			webView.getEngine().setJavaScriptEnabled(true);
@@ -137,6 +141,7 @@ public class MSAuthenticator implements LoginManager {
 							}
 							jf.dispose();
 							webView.getEngine().load(null);
+							manager.getCookieStore().removeAll();
 							break;
 						}
 					}
