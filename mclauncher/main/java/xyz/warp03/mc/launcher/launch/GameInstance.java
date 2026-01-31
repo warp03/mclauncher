@@ -130,10 +130,12 @@ public class GameInstance {
 			libPath.append(libName0[0].replace(".", "/"));
 			libPath.append("/" + libName0[1] + "/" + libName0[2]);
 			libPath.append("/" + libName0[1] + "-" + libName0[2]);
+			String libclassifier = null;
 			if(nativelibs){
 				if(!jlib.getJSONObject("natives").keySet().contains(OS_NAME_SHORT))
 					continue;
-				libPath.append("-" + jlib.getJSONObject("natives").getString(OS_NAME_SHORT).replace("${arch}", Util.is64Bit() ? "64" : "32"));
+				libclassifier = jlib.getJSONObject("natives").getString(OS_NAME_SHORT).replace("${arch}", Util.is64Bit() ? "64" : "32");
+				libPath.append("-" + libclassifier);
 			}else if(libName0.length > 3 && libName0[3].startsWith("natives-")){
 				nativelibs = true;
 				libPath.append("-" + libName0[3]);
@@ -142,7 +144,14 @@ public class GameInstance {
 
 			Path libraryPath = Paths.get(libraryDir, libPath.toString());
 			if(!Files.exists(libraryPath)){
-				JSONObject artifactDesc = jlib.getJSONObject("downloads").getJSONObject("artifact");
+				JSONObject artifactDl = jlib.getJSONObject("downloads");
+				JSONObject artifactDesc;
+				if(artifactDl.has("classifiers") && libclassifier != null){
+					artifactDesc = artifactDl.getJSONObject("classifiers").getJSONObject(libclassifier);
+				}else if(artifactDl.has("artifact")){
+					artifactDesc = artifactDl.getJSONObject("artifact");
+				}else
+					throw new UnsupportedOperationException("Cannot determine download location for library: " + libName);
 				progressCallback.accept(progress, "Downloading library " + libName + " from '" + artifactDesc.getString("url") + "'");
 				byte[] data = Util.downloadAndVerifyArtifact(artifactDesc);
 				Files.createDirectories(libraryPath.getParent());
@@ -207,6 +216,7 @@ public class GameInstance {
 
 
 	public static void extractNativesJar(String jarFile, Path dest) throws IOException {
+		Files.createDirectories(dest);
 		try(JarFile jar = new JarFile(jarFile)){
 			java.util.Enumeration<JarEntry> enumEntries = jar.entries();
 			while(enumEntries.hasMoreElements()){
