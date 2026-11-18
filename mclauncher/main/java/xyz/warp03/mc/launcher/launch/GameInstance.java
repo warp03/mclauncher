@@ -45,8 +45,20 @@ public class GameInstance {
 
 
 	public void extractNatives(Path dest) throws IOException {
+		String subpath = "";
+		for(String a : this.jvmArguments){
+			if(a.startsWith("-Djava.library.path=")){
+				int si = a.indexOf("${natives_directory}");
+				if(si > 0)
+					subpath = a.substring(si + 20);
+				while(subpath.startsWith("/"))
+					subpath = subpath.substring(1);
+				subpath = subpath.trim();
+				break;
+			}
+		}
 		for(String njar : this.nativeLibraries){
-			extractNativesJar(njar, dest);
+			extractNativesJar(njar, dest.resolve(subpath));
 		}
 	}
 
